@@ -9,30 +9,39 @@ const idea_schema = new mongoose_1.default.Schema({
     idea: {
         type: String,
     },
-    userBackground: [{
+    userBackground: [
+        {
             skills: [String],
             experience: [String],
-        }],
+        },
+    ],
+    excerpt: {
+        type: String,
+    },
     userInterests: [String],
-    marketInformation: [{
+    marketInformation: [
+        {
             industry: String,
             trends: [String],
             gaps: [String],
-        }],
+        },
+    ],
     problems: [String],
     targetAudience: [String],
-    resources: [{
+    resources: [
+        {
             capital: String,
             time: String,
             team: String,
-        }],
-    user: {
+        },
+    ],
+    auther: {
         type: mongoose_1.default.Schema.Types.ObjectId,
         ref: "User",
     },
     created_date: {
         type: Date,
-        default: new Date()
-    }
+        default: new Date(),
+    },
 });
 exports.Idea = mongoose_1.default.model("Idea", idea_schema);

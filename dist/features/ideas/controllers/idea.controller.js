@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.idea_details = exports.idea_list = exports.generate_idea = void 0;
+exports.user_idea_list = exports.idea_details = exports.idea_list = exports.generate_idea = void 0;
 const openai_1 = require("openai");
 const idea_model_1 = require("../models/idea.model");
 const configuration = new openai_1.Configuration({
@@ -56,6 +56,7 @@ const generate_idea = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         // console.log(chat_completion.data.choices[0].message?.content);
         const new_idea = new idea_model_1.Idea({
             idea: idea,
+            excerpt: idea.slice(0, 40),
             // user: req.user._id,
             userBackground: [{ skills, experience }],
             userInterests,
@@ -114,7 +115,7 @@ const idea_list = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         const total_idea = yield idea_model_1.Idea.countDocuments(query);
         const total_pages = Math.ceil(total_idea / limit);
         const skip = (page - 1) * limit;
-        const projects = yield idea_model_1.Idea.find(query)
+        const projects = yield idea_model_1.Idea.find(query, "-idea")
             .sort(sort_options)
             .skip(skip)
             .limit(limit)
@@ -149,3 +150,55 @@ const idea_details = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.idea_details = idea_details;
+const user_idea_list = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
+    try {
+        const search_term = req.query.search;
+        const sort_by = req.query.sortBy;
+        const sort_order = parseInt(req.query.sortOrder) || 1;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const sort_options = {};
+        if (sort_by === "last_modified") {
+            sort_options.created_date = sort_order;
+        }
+        const query = { auther: (_b = req.user) === null || _b === void 0 ? void 0 : _b._id };
+        if (search_term) {
+            query.idea = { $regex: search_term, $options: "i" };
+            query.userBackground.skills = search_term;
+            query.userBackground.experience = search_term;
+            query.userInterests = search_term;
+            query.marketInformation.industry = search_term;
+            query.marketInformation.trends = search_term;
+            query.marketInformation.gaps = search_term;
+            query.problems = search_term;
+            query.targetAudience = search_term;
+            query.resources.capital = search_term;
+            query.resources.time = search_term;
+            query.resources.team = search_term;
+        }
+        const total_idea = yield idea_model_1.Idea.countDocuments(query);
+        const total_pages = Math.ceil(total_idea / limit);
+        const skip = (page - 1) * limit;
+        const projects = yield idea_model_1.Idea.find(query)
+            .sort(sort_options)
+            .skip(skip)
+            .limit(limit)
+            .exec();
+        if (total_idea == 0) {
+            res.status(404).json({ message: "no projects found" });
+        }
+        else {
+            res.status(200).json({
+                projects,
+                total_idea,
+                total_pages,
+                currentPage: page,
+            });
+        }
+    }
+    catch (error) {
+        res.status(500).json({ message: "server error", error });
+    }
+});
+exports.user_idea_list = user_idea_list;

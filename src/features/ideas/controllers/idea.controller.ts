@@ -56,11 +56,13 @@ export const generate_idea = async (req: Request, res: Response) => {
       }
       // { responseType: "stream" }
     );
-    const idea = chat_completion.data.choices[0].message?.content;
+    const idea: string = chat_completion.data.choices[0].message
+      ?.content as string;
     // console.log(chat_completion.data.choices[0].message?.content);
 
     const new_idea = new Idea({
       idea: idea,
+      excerpt: idea.slice(0, 40),
       // user: req.user._id,
       userBackground: [{ skills, experience }],
 
@@ -123,7 +125,7 @@ export const idea_list = async (req: Request, res: Response) => {
     const total_pages: number = Math.ceil(total_idea / limit);
     const skip: number = (page - 1) * limit;
 
-    const projects = await Idea.find(query)
+    const projects = await Idea.find(query, "-idea")
       .sort(sort_options)
       .skip(skip)
       .limit(limit)
@@ -151,6 +153,59 @@ export const idea_details = async (req: Request, res: Response) => {
       res.status(404).json({ message: "Idea not found" });
     }
     res.status(200).json({ message: "idea found", idea });
+  } catch (error) {
+    res.status(500).json({ message: "server error", error });
+  }
+};
+
+export const user_idea_list = async (req: Request, res: Response) => {
+  try {
+    const search_term: string = req.query.search as string;
+    const sort_by: string = req.query.sortBy as string;
+    const sort_order: number = parseInt(req.query.sortOrder as string) || 1;
+    const page: number = parseInt(req.query.page as string) || 1;
+    const limit: number = parseInt(req.query.limit as string) || 10;
+
+    const sort_options: any = {};
+    if (sort_by === "last_modified") {
+      sort_options.created_date = sort_order;
+    }
+    const query: any = { auther: req.user?._id };
+    if (search_term) {
+      query.idea = { $regex: search_term, $options: "i" };
+      query.userBackground.skills = search_term;
+      query.userBackground.experience = search_term;
+      query.userInterests = search_term;
+      query.marketInformation.industry = search_term;
+      query.marketInformation.trends = search_term;
+      query.marketInformation.gaps = search_term;
+      query.problems = search_term;
+      query.targetAudience = search_term;
+      query.resources.capital = search_term;
+      query.resources.time = search_term;
+      query.resources.team = search_term;
+    }
+
+    const total_idea: number = await Idea.countDocuments(query);
+    const total_pages: number = Math.ceil(total_idea / limit);
+    const skip: number = (page - 1) * limit;
+
+    const projects = await Idea.find(query)
+      .sort(sort_options)
+      .skip(skip)
+      .limit(limit)
+      .exec();
+
+    if (total_idea == 0) {
+      res.status(404).json({ message: "no projects found" });
+    } else {
+      res.status(200).json({
+        projects,
+        total_idea,
+        total_pages,
+        currentPage: page,
+      });
+    }
   } catch (error) {
     res.status(500).json({ message: "server error", error });
   }
